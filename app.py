@@ -16,6 +16,7 @@ CORS(app)  # Enable CORS for all routes
 model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
 
 # ✅ Load TensorFlow Lite Model
+model = None
 try:
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
@@ -29,7 +30,6 @@ try:
     logging.info(f"📌 Model Input Shape: {input_size}")
 except Exception as e:
     logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
-    model = None  # Prevents inference if loading fails
 
 # ✅ Set Up Logging
 logging.basicConfig(level=logging.INFO)
@@ -103,6 +103,7 @@ def get_image(filename):
 @app.route('/detect-deepfake', methods=['POST'])
 def detect_deepfake():
     if model is None:
+        logging.error("Model is not loaded. Unable to proceed with detection.")
         return jsonify({"error": "Model failed to load"}), 500
 
     try:
@@ -136,6 +137,8 @@ def detect_deepfake():
 
         prediction = "Deepfake" if confidence > 50 else "Real"
 
+        logging.info(f"Prediction: {prediction} with confidence: {confidence}%")
+
         return jsonify({
             "is_deepfake": prediction,
             "confidence": confidence,
@@ -149,4 +152,5 @@ def detect_deepfake():
 # ✅ Run Flask App
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    logging.info(f"🚀 Running on http://0.0.0.0:{port}")
     app.run(debug=True, host="0.0.0.0", port=port)
