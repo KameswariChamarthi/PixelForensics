@@ -86,6 +86,9 @@ def upload_image():
 
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
         image.save(image_path)
+        # Ensure this is correct
+        
+
 
         return jsonify({"message": "Upload successful", "image_url": f"/images/{image.filename}"}), 201
     except Exception as e:
@@ -117,6 +120,10 @@ def detect_deepfake():
 
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(file_path)
+        file = request.files['file']
+        logging.info(f"Received file: {file.filename}")
+
+
 
         img = Image.open(file_path).convert("RGB").resize(input_size)
         img_array = np.array(img, dtype=np.float32) / 255.0
@@ -142,6 +149,8 @@ def detect_deepfake():
     except Exception as e:
         logging.error(f"🚨 ERROR: {e}")
         return jsonify({"error": str(e)}), 500
+    
+
 
 # ✅ Run Flask App
 import os
