@@ -147,6 +147,9 @@ def detect_deepfake():
 # ✅ Run Flask App
 import os
 
+model_path = os.getenv("MODEL_PATH", "deepfake_detector.tflite")  # Default path if the variable is not set
+
+
 if not os.path.exists(model_path):
     logging.error(f"Model file not found at {model_path}")
 else:
