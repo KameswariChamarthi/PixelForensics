@@ -12,6 +12,21 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app, resources={r"/detect-deepfake": {"origins": "*"}})  # Allow all origins for now
 
+import os
+import tensorflow as tf
+
+# Set the model path from environment variable (default to 'models/deepfake_detector.tflite' if not set)
+model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
+
+# Load the model
+try:
+    model = tf.lite.Interpreter(model_path=model_path)
+    model.allocate_tensors()
+    print(f"Model loaded successfully from {model_path}")
+except Exception as e:
+    print(f"🚨 ERROR: Model Loading Failed: {e}")
+
+
 # ✅ Set Up Logging
 logging.basicConfig(level=logging.INFO)
 
