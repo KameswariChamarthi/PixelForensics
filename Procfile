@@ -1,3 +1,3 @@
-web: gunicorn PixelForensics.app:app
+web: gunicorn PixelForensics-main.app:app
 
 
