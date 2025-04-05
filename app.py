@@ -147,6 +147,12 @@ def detect_deepfake():
 # ✅ Run Flask App
 import os
 
+if not os.path.exists(model_path):
+    logging.error(f"Model file not found at {model_path}")
+else:
+    logging.info(f"Model file found at {model_path}")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
