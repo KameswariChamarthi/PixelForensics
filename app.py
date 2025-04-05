@@ -10,39 +10,13 @@ from flask_cors import CORS
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
-CORS(app, resources={r"/detect-deepfake": {"origins": "*"}})  # Allow all origins for now
+CORS(app)  # Enable CORS for all routes
 
-import os
-import tensorflow as tf
-
-# Set the model path from environment variable (default to 'models/deepfake_detector.tflite' if not set)
+# ✅ Set the model path from environment variable (default to 'models/deepfake_detector.tflite' if not set)
 model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
-
-# Load the model
-try:
-    model = tf.lite.Interpreter(model_path=model_path)
-    model.allocate_tensors()
-    print(f"Model loaded successfully from {model_path}")
-except Exception as e:
-    print(f"🚨 ERROR: Model Loading Failed: {e}")
-
-
-# ✅ Set Up Logging
-logging.basicConfig(level=logging.INFO)
-
-# ✅ Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///deepfake_results.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
-
-# ✅ Create Uploads Folder
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # ✅ Load TensorFlow Lite Model
 try:
-    model_path = r"D:\New folder\deepfake_detection\deepfake_detector.tflite"  # Keep this path for local testing
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
     input_details = model.get_input_details()
@@ -56,6 +30,19 @@ try:
 except Exception as e:
     logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
     model = None  # Prevents inference if loading fails
+
+# ✅ Set Up Logging
+logging.basicConfig(level=logging.INFO)
+
+# ✅ Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///deepfake_results.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
+# ✅ Create Uploads Folder
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # ✅ Home Route
 @app.route('/')
@@ -160,17 +147,6 @@ def detect_deepfake():
         return jsonify({"error": str(e)}), 500
 
 # ✅ Run Flask App
-import os
-
-model_path = os.getenv("MODEL_PATH", "deepfake_detector.tflite")  # Default path if the variable is not set
-
-
-if not os.path.exists(model_path):
-    logging.error(f"Model file not found at {model_path}")
-else:
-    logging.info(f"Model file found at {model_path}")
-
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
