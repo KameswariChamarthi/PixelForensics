@@ -5,81 +5,92 @@ import numpy as np
 from PIL import Image
 import logging
 from database import db, ScanResult
+import scipy.special 
 from flask_cors import CORS
 
-# Initialize Flask App
+# ✅ Initialize Flask App
 app = Flask(__name__)
-CORS(app, origins=["http://127.0.0.1:5500"])
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for now
 
-# Set up logging
+# ✅ Set Up Logging
 logging.basicConfig(level=logging.INFO)
 
-# Database Configuration
+# ✅ Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///deepfake_results.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# Create Uploads Folder
+# ✅ Create Uploads Folder
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# ✅ Load the TFLite Model at the START
+# ✅ Load TensorFlow Lite Model
 try:
     model_path = r"D:\New folder\deepfake_detection\deepfake_detector.tflite"
-
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
     input_details = model.get_input_details()
     output_details = model.get_output_details()
+    
+    # ✅ Dynamically Set Model Input Shape
+    input_size = tuple(input_details[0]['shape'][1:3])  # (Height, Width)
 
-    print("Expected Input Shape:", input_details[0]['shape'])  # Debugging
-
-    logging.info("✅ Model Loaded Successfully!")
+    logging.info(f"✅ Model Loaded Successfully from: {model_path}")
+    logging.info(f"📌 Model Input Shape: {input_size}")
 except Exception as e:
-    logging.error(f"🚨 ERROR: Failed to load model: {e}")
-    model = None  # Prevents usage if loading fails
+    logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
+    model = None  # Prevents inference if loading fails
 
+# ✅ Home Route
 @app.route('/')
 def home():
-    return "API is working!"
+    return jsonify({"message": "Deepfake Detection API is Running!"})
 
-# ✅ API Status Check
+# ✅ API Status Route
 @app.route('/status', methods=['GET'])
 def status():
-    return jsonify({"message": "API is running!"})
+    return jsonify({"status": "API is running!"})
 
-# ✅ Store Deepfake Scan Results
+# ✅ Store Deepfake Scan Results in Database
 @app.route('/store_result', methods=['POST'])
 def store_result():
-    data = request.json
-    filename = data.get('filename')
-    prediction = data.get('prediction')
-    confidence = data.get('confidence')
+    try:
+        data = request.json
+        filename = data.get('filename')
+        prediction = data.get('prediction')
+        confidence = data.get('confidence')
 
-    if not filename or not prediction or confidence is None:
-        return jsonify({"error": "Missing data"}), 400
+        if not filename or not prediction or confidence is None:
+            return jsonify({"error": "Missing data"}), 400
 
-    new_result = ScanResult(filename=filename, prediction=prediction, confidence=confidence)
-    db.session.add(new_result)
-    db.session.commit()
+        new_result = ScanResult(filename=filename, prediction=prediction, confidence=confidence)
+        db.session.add(new_result)
+        db.session.commit()
 
-    return jsonify({"message": "Result stored successfully!"}), 201
+        return jsonify({"message": "Result stored successfully!"}), 201
+    except Exception as e:
+        logging.error(f"🚨 ERROR in storing results: {e}")
+        return jsonify({"error": "Failed to store result"}), 500
 
-# ✅ Upload Image
+# ✅ Upload Image Route
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
-    if 'image' not in request.files:
-        return jsonify({"error": "No image file provided"}), 400
+    try:
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
 
-    image = request.files['image']
-    if image.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+        image = request.files['image']
+        if image.filename == '':
+            return jsonify({"error": "No selected file"}), 400
 
-    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
-    image.save(image_path)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
+        image.save(image_path)
 
-    return jsonify({"message": "Upload successful", "image_url": f"/images/{image.filename}"}), 201
+        return jsonify({"message": "Upload successful", "image_url": f"/images/{image.filename}"}), 201
+    except Exception as e:
+        logging.error(f"🚨 ERROR in uploading image: {e}")
+        return jsonify({"error": "Image upload failed"}), 500
 
 # ✅ Serve Uploaded Images
 @app.route('/images/<filename>')
@@ -88,58 +99,52 @@ def get_image(filename):
 
 # ✅ Deepfake Detection Route
 @app.route('/detect-deepfake', methods=['POST'])
-@app.route('/predict', methods=['POST'])  # Alias for prediction
 def detect_deepfake():
     if model is None:
         return jsonify({"error": "Model failed to load"}), 500
 
     try:
-        image = request.files.get('image')
+        if 'file' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
 
-        if not image:
-            return jsonify({"error": "No image file provided"}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
 
         allowed_extensions = {"png", "jpg", "jpeg"}
-        if not image.filename.lower().endswith(tuple(allowed_extensions)):
-            return jsonify({"error": "Invalid image file type"}), 400
+        if not file.filename.lower().endswith(tuple(allowed_extensions)):
+            return jsonify({"error": "Invalid file type"}), 400
 
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
-        image.save(image_path)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(file_path)
 
-        # ✅ Fix Image Preprocessing (Ensure correct input size)
-        img = Image.open(image_path).convert("RGB").resize((299, 299))  # Ensure correct size
-        img_array = np.array(img, dtype=np.float32) / 255.0  # Normalize pixel values
+        img = Image.open(file_path).convert("RGB").resize(input_size)
+        img_array = np.array(img, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Debugging: Print final image shape
-        print("Final Image Shape:", img_array.shape)
-
-        # ✅ Run Model Inference
         model.set_tensor(input_details[0]["index"], img_array)
         model.invoke()
         output_data = model.get_tensor(output_details[0]["index"])
 
-        # Debugging: Print raw model output
-        print("Raw Model Output:", output_data)
+        # ✅ Apply Sigmoid to Normalize Confidence
+        raw_output = float(output_data[0][0])
+        confidence = scipy.special.expit(raw_output)  # Ensures confidence is between 0 and 1
+        confidence = round(confidence * 100, 2)  
 
-        # ✅ Fix Confidence Value (Normalize to 0-1)
-        confidence = (float(output_data[0][0]) + 1) / 2  # Convert to range [0,1]
-
-        prediction = "Deepfake" if confidence > 0.5 else "Real"
+        prediction = "Deepfake" if confidence > 50 else "Real"
 
         return jsonify({
             "is_deepfake": prediction,
             "confidence": confidence,
-            "processed_image": image.filename
+            "processed_image": file.filename
         })
 
     except Exception as e:
         logging.error(f"🚨 ERROR: {e}")
         return jsonify({"error": str(e)}), 500
-    
 
 # ✅ Run Flask App
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Ensure database tables are created
-    app.run(debug=True)
+        db.create_all()  # Ensure database tables are created at startup
+    app.run(host="0.0.0.0", port=5000, debug=True)
