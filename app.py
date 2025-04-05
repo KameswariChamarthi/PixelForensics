@@ -10,7 +10,8 @@ from flask_cors import CORS
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for now
+CORS(app, resources={r"/detect-deepfake": {"origins": "*"}})
+  # Allow all origins for now
 
 # ✅ Set Up Logging
 logging.basicConfig(level=logging.INFO)
