@@ -7,6 +7,9 @@ import logging
 from database import db, ScanResult
 import scipy.special 
 from flask_cors import CORS
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
+
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
