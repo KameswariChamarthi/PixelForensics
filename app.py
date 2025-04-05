@@ -10,8 +10,7 @@ from flask_cors import CORS
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
-CORS(app, resources={r"/detect-deepfake": {"origins": "*"}})
-  # Allow all origins for now
+CORS(app, resources={r"/detect-deepfake": {"origins": "*"}})  # Allow all origins for now
 
 # ✅ Set Up Logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +27,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # ✅ Load TensorFlow Lite Model
 try:
-    model_path = r"D:\New folder\deepfake_detection\deepfake_detector.tflite"
+    model_path = r"D:\New folder\deepfake_detection\deepfake_detector.tflite"  # Keep this path for local testing
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
     input_details = model.get_input_details()
@@ -87,9 +86,6 @@ def upload_image():
 
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
         image.save(image_path)
-        # Ensure this is correct
-        
-
 
         return jsonify({"message": "Upload successful", "image_url": f"/images/{image.filename}"}), 201
     except Exception as e:
@@ -121,10 +117,7 @@ def detect_deepfake():
 
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(file_path)
-        file = request.files['file']
         logging.info(f"Received file: {file.filename}")
-
-
 
         img = Image.open(file_path).convert("RGB").resize(input_size)
         img_array = np.array(img, dtype=np.float32) / 255.0
@@ -150,18 +143,10 @@ def detect_deepfake():
     except Exception as e:
         logging.error(f"🚨 ERROR: {e}")
         return jsonify({"error": str(e)}), 500
-    
-
 
 # ✅ Run Flask App
 import os
 
-# with app.app_context():
-#     db.create_all()
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
-
-
-
