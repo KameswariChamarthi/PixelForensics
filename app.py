@@ -5,8 +5,9 @@ import numpy as np
 from PIL import Image
 import logging
 from database import db, ScanResult
-import scipy.special 
+import scipy.special
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
@@ -90,10 +91,12 @@ def upload_image():
         if image.filename == '':
             return jsonify({"error": "No selected file"}), 400
 
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
+        # Use secure_filename to avoid issues with filenames
+        filename = secure_filename(image.filename)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         image.save(image_path)
 
-        return jsonify({"message": "Upload successful", "image_url": f"/images/{image.filename}"}), 201
+        return jsonify({"message": "Upload successful", "image_url": f"/images/{filename}"}), 201
     except Exception as e:
         logging.error(f"🚨 ERROR in uploading image: {e}")
         return jsonify({"error": "Image upload failed"}), 500
@@ -122,10 +125,12 @@ def detect_deepfake():
         if not file.filename.lower().endswith(tuple(allowed_extensions)):
             return jsonify({"error": "Invalid file type"}), 400
 
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        logging.info(f"Received file: {file.filename}")
+        logging.info(f"Received file: {filename}")
 
+        # Image preprocessing
         img = Image.open(file_path).convert("RGB").resize(input_size)
         img_array = np.array(img, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
@@ -146,7 +151,7 @@ def detect_deepfake():
         return jsonify({
             "is_deepfake": prediction,
             "confidence": confidence,
-            "processed_image": file.filename
+            "processed_image": filename
         })
 
     except Exception as e:
@@ -156,4 +161,4 @@ def detect_deepfake():
 # ✅ Run Flask App
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+    app.run(debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true", host="0.0.0.0", port=port)
