@@ -107,7 +107,7 @@ def get_image(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ✅ Deepfake Detection Route
-@app.route('/detect-deepfake', methods=['POST'])
+@app.route('/detect_deepfake', methods=['POST'])
 def detect_deepfake():
     if model is None:
         logging.error("Model is not loaded. Unable to proceed with detection.")
