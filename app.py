@@ -10,10 +10,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 # ✅ Initialize Flask App
-
-# Enable CORS for specific frontend URL
-CORS(app, origins=["https://pixfront-production.up.railway.app"])
- # Enable CORS for all routes
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # ✅ Set the model path from environment variable (default to 'models/deepfake_detector.tflite' if not set)
 model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
