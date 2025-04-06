@@ -21,6 +21,8 @@ model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
 # ✅ Load TensorFlow Lite Model
 model = None
 try:
+    logging.info(f"Loading model from path: {model_path}")  # <-- Add this line here
+
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
     input_details = model.get_input_details()
@@ -33,7 +35,6 @@ try:
     logging.info(f"📌 Model Input Shape: {input_size}")
 except Exception as e:
     logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
-
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -58,6 +59,11 @@ def home():
 @app.route('/status', methods=['GET'])
 def status():
     return jsonify({"status": "API is running!"})
+
+@app.before_request
+def before_request():
+    if not request.is_secure:
+        return redirect(request.url.replace("http://", "https://"))
 
 # ✅ Store Deepfake Scan Results in Database
 @app.route('/store_result', methods=['POST'])
