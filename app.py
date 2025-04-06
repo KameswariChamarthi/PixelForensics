@@ -7,9 +7,6 @@ import logging
 from database import db, ScanResult
 import scipy.special 
 from flask_cors import CORS
-import os
- # Disable GPU
-
 
 # ✅ Initialize Flask App
 app = Flask(__name__)
@@ -18,26 +15,27 @@ CORS(app)  # Enable CORS for all routes
 # ✅ Set the model path from environment variable (default to 'models/deepfake_detector.tflite' if not set)
 model_path = os.getenv("MODEL_PATH", "models/deepfake_detector.tflite")
 
+# ✅ Logging Setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# ✅ Log the model path (Make sure this is printing the correct model path)
+logging.info(f"Loading model from path: {model_path}")
+
 # ✅ Load TensorFlow Lite Model
 model = None
 try:
-    logging.info(f"Loading model from path: {model_path}")  # <-- Add this line here
-
     model = tf.lite.Interpreter(model_path=model_path)
     model.allocate_tensors()
     input_details = model.get_input_details()
     output_details = model.get_output_details()
-    
+
     # ✅ Dynamically Set Model Input Shape
     input_size = tuple(input_details[0]['shape'][1:3])  # (Height, Width)
-
+    
     logging.info(f"✅ Model Loaded Successfully from: {model_path}")
     logging.info(f"📌 Model Input Shape: {input_size}")
 except Exception as e:
     logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
-
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # ✅ Database Configuration
@@ -59,11 +57,6 @@ def home():
 @app.route('/status', methods=['GET'])
 def status():
     return jsonify({"status": "API is running!"})
-
-@app.before_request
-def before_request():
-    if not request.is_secure:
-        return redirect(request.url.replace("http://", "https://"))
 
 # ✅ Store Deepfake Scan Results in Database
 @app.route('/store_result', methods=['POST'])
