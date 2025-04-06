@@ -34,8 +34,10 @@ try:
 except Exception as e:
     logging.error(f"🚨 ERROR: Model Loading Failed: {e}")
 
-# ✅ Set Up Logging
-logging.basicConfig(level=logging.INFO)
+
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 # ✅ Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///deepfake_results.db'
